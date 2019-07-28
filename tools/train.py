@@ -30,6 +30,8 @@ from pysot.utils.average_meter import AverageMeter
 from pysot.utils.misc import describe, commit
 from pysot.models.model_builder import ModelBuilder
 from pysot.datasets.dataset import TrkDataset
+from pysot.datasets.tracking_dataset import TrackingDataset
+
 from pysot.core.config import cfg
 
 
@@ -57,7 +59,7 @@ def seed_torch(seed=0):
 def build_data_loader():
     logger.info("build train dataset")
     # train_dataset
-    train_dataset = TrkDataset()
+    train_dataset = TrackingDataset()
     logger.info("build dataset done")
 
     train_sampler = None

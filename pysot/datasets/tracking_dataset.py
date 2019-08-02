@@ -6,7 +6,7 @@ from collections import namedtuple
 
 from torch.utils.data import Dataset
 from pysot.core.config import cfg
-
+from tqdm import tqdm
 from pysot.datasets.otb import OTBDataset
 from pysot.datasets.anchor_target import AnchorTarget
 from pysot.datasets.augmentation import Augmentation
@@ -84,7 +84,7 @@ class TrackingDatasetAdapter:
         return self.get_image_anno(video, template_frame, type='template'), \
             self.get_image_anno(video, search_frame, type='search'), video.get_query()
 
-    def get_random_target_with_query(self, index=-1):
+    def get_random_target_with_query(self, index=-1, ignore_index=None):
         r"""
         Method to get a random frame from a random video
         :param index: the index of the video to be used for selecting the random frame
@@ -93,6 +93,9 @@ class TrackingDatasetAdapter:
         """
         if index == -1:
             index = np.random.randint(0, self.num)
+        if ignore_index is not None and ignore_index == index:
+            while index != ignore_index:
+                index = np.random.randint(0, self.num)
         video_name = self.video_names[index]
         video = self.videos[video_name]
         frames = video.get_frames()
@@ -206,8 +209,11 @@ class TrackingDataset(Dataset):
         gray = cfg.DATASET.GRAY and cfg.DATASET.GRAY > np.random.random()
         neg = cfg.DATASET.NEG and cfg.DATASET.NEG > np.random.random()
 
-
-        template, search, query = self.dataset.get_positive_pair_with_query(index)
+        if neg:
+            template, query = self.dataset.get_random_target_with_query(index)
+            search, query = self.dataset.get_random_target_with_query(index, ignore_index = index)
+        else:
+            template, search, query = self.dataset.get_positive_pair_with_query(index)
 
         # get image
         template_image = template[0]
@@ -221,7 +227,7 @@ class TrackingDataset(Dataset):
         #search_box = BBOX(search[1][0], search[1][1], search[1][2]+search[1][0], search[1][3]+search[1][1])
 
         # Uncomment below line if you want to visualize the template and search with box before augmentation for validating
-        self.save_image(template_image, template_box, search_image, search_box)
+        #self.save_image(template_image, template_box, search_image, search_box)
         template_image, template_box = self.template_aug(template_image,
                                         template_box,
                                         cfg.TRAIN.EXEMPLAR_SIZE,
@@ -232,14 +238,14 @@ class TrackingDataset(Dataset):
                                        cfg.TRAIN.SEARCH_SIZE,
                                        gray=gray)
         # Uncomment below line if you want to visualize the template and search with box after augmentation for validating
-        self.save_image(template_image, template_box, search_image, search_box, suffix=AUGMENTATION_IMAGE_SUFFIX)
+        #self.save_image(template_image, template_box, search_image, search_box, suffix=AUGMENTATION_IMAGE_SUFFIX)
         cls, delta, delta_weight, overlap = self.anchor_target(
             search_box, cfg.TRAIN.OUTPUT_SIZE, neg)
         #print(np.sum(cls==-1))
-        print(np.sum(cls==1))
+        #print(np.sum(cls==1))
         #print(np.sum(cls==0))
-        if np.sum(cls == 1) == 0:
-            print(index)
+        #if np.sum(cls == 1) == 0:
+        #    print(index)
         template = template_image.transpose((2, 0, 1)).astype(np.float32)
         search = search_image.transpose((2, 0, 1)).astype(np.float32)
         # return {
@@ -266,8 +272,8 @@ if __name__ == '__main__':
     track_dataset = TrackingDataset(name="OTB_tune_51", loader=OTBDataset,
                                     root="/Users/tusharkumar/PycharmProjects/tracking_lang/ln_data/OTB100/",
                                     frame_root="/Users/tusharkumar/PycharmProjects/tracking_lang/ln_data/OTBSiamRPNData")
-    track_dataset[1]
-    exit(0)
-    for idx, data in enumerate(track_dataset):
-        batch_template_image = data['template']
+    for i in range(1000):
+        print("Current Iteration {}".format(i))
+        for idx, data in enumerate(track_dataset):
+            batch_template_image = data['template']
 
